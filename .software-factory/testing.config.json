@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "framework": "node:test",
+  "sourceFiles": [
+    "src/utils/response.util.js",
+    "scripts/collect-project-context.mjs",
+    "src/app.js",
+    "src/config/database.js",
+    "src/config/openai.js",
+    "src/config/passport.js",
+    "src/config/server.js",
+    "src/controllers/ai.controller.js"
+  ],
+  "referenceTests": [
+    ".software-factory/setup-smoke.test.cjs"
+  ],
+  "testDirectory": "tests/generated"
+}

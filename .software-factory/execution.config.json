@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "workingDirectory": ".",
+  "commands": [
+    {
+      "name": "test",
+      "argv": [
+        "node",
+        "--test",
+        ".software-factory/setup-smoke.test.cjs"
+      ],
+      "timeoutSeconds": 120
+    }
+  ]
+}
