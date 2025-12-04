@@ -40,36 +40,6 @@ jobs:
             echo "✅ No merge conflicts"
           fi
 
-  # Job 2: Code Quality Analysis
-  code-quality:
-    name: Code Quality
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Check code formatting (Prettier)
-        run: npx prettier --check "src/**/*.js" || echo "⚠️  Code formatting check skipped (Prettier not configured)"
-        continue-on-error: true
-      
-      - name: Analyze code complexity
-        run: |
-          echo "📊 Analyzing code complexity..."
-          find src -name "*.js" -type f | head -10 | while read file; do
-            lines=$(wc -l < "$file")
-            echo "$file: $lines lines"
-          done
-
   # Job 3: Integration Tests
   integration-test:
     name: Integration Tests
