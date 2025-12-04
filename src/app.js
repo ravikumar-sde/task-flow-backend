@@ -30,6 +30,10 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 app.use('/api/v1/users', require('./routes/user.routes'));
+app.use('/api/v1/workspaces', require('./routes/workspace.routes'));
+app.use('/api/v1/boards', require('./routes/board.routes'));
+app.use('/api/v1/stages', require('./routes/stage.routes'));
+app.use('/api/v1/cards', require('./routes/card.routes'));
 
 // 404 handler
 app.use((req, res) => {
