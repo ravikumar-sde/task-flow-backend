@@ -842,6 +842,35 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Get Board Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/workspaces/:workspaceId/board/:boardId",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "workspaces", ":workspaceId", "board", ":boardId"],
+							"variable": [
+								{
+									"key": "workspaceId",
+									"value": "WORKSPACE_ID_HERE"
+								},
+								{
+									"key": "boardId",
+									"value": "BOARD_ID_HERE"
+								}
+							]
+						},
+						"description": "Get complete board dashboard with all stages and cards in nested structure"
+					},
+					"response": []
 				}
 			]
 		},
@@ -1192,6 +1221,204 @@
 								}
 							]
 						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Cards",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/cards/board/:boardId/filter?labels=backend&dueDate=today",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "cards", "board", ":boardId", "filter"],
+							"query": [
+								{
+									"key": "labels",
+									"value": "backend",
+									"description": "Comma-separated list of labels"
+								},
+								{
+									"key": "members",
+									"value": "userId1,userId2",
+									"description": "Comma-separated list of user IDs",
+									"disabled": true
+								},
+								{
+									"key": "dueDate",
+									"value": "today",
+									"description": "Options: overdue, today, tomorrow"
+								}
+							],
+							"variable": [
+								{
+									"key": "boardId",
+									"value": "{{boardId}}"
+								}
+							]
+						},
+						"description": "Filter cards by members, labels, and due date"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Cards",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/cards/board/:boardId/search?q=authentication",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "cards", "board", ":boardId", "search"],
+							"query": [
+								{
+									"key": "q",
+									"value": "authentication",
+									"description": "Search query for card title or description"
+								}
+							],
+							"variable": [
+								{
+									"key": "boardId",
+									"value": "{{boardId}}"
+								}
+							]
+						},
+						"description": "Search cards by title or description (case-insensitive)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Comments",
+			"item": [
+				{
+					"name": "Create Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"This is a comment on the card\",\n  \"cardId\": \"{{cardId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/comments",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "comments"]
+						},
+						"description": "Create a new comment on a card"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Card Comments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/comments/card/:cardId",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "comments", "card", ":cardId"],
+							"variable": [
+								{
+									"key": "cardId",
+									"value": "{{cardId}}"
+								}
+							]
+						},
+						"description": "Get all comments for a specific card"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Comment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated comment content\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/comments/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "comments", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						},
+						"description": "Update a comment (only by creator)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/comments/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "comments", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						},
+						"description": "Delete a comment (only by creator)"
 					},
 					"response": []
 				}

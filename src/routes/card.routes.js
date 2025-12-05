@@ -89,6 +89,8 @@ const moveCardValidation = [
 router.post('/', authenticate, createCardValidation, validate, cardController.createCard);
 router.get('/stage/:stageId', authenticate, cardController.getStageCards);
 router.get('/board/:boardId', authenticate, cardController.getBoardCards);
+router.get('/board/:boardId/filter', authenticate, cardController.filterCards);
+router.get('/board/:boardId/search', authenticate, cardController.searchCards);
 router.get('/:id', authenticate, cardController.getCardById);
 router.put('/:id', authenticate, updateCardValidation, validate, cardController.updateCard);
 router.delete('/:id', authenticate, cardController.deleteCard);

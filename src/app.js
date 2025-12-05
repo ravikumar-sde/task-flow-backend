@@ -10,6 +10,10 @@ const app = express();
 app.use(cors({
   origin: config.corsOrigin,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400,
 }));
 
 app.use(express.json());
@@ -34,6 +38,7 @@ app.use('/api/v1/workspaces', require('./routes/workspace.routes'));
 app.use('/api/v1/boards', require('./routes/board.routes'));
 app.use('/api/v1/stages', require('./routes/stage.routes'));
 app.use('/api/v1/cards', require('./routes/card.routes'));
+app.use('/api/v1/comments', require('./routes/comment.routes'));
 
 // 404 handler
 app.use((req, res) => {

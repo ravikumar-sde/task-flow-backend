@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const workspaceController = require('../controllers/workspace.controller');
+const boardController = require('../controllers/board.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
-const { body, param } = require('express-validator');
+const { body } = require('express-validator');
 const { validate } = require('../middlewares/validation.middleware');
 
 const createWorkspaceValidation = [
@@ -54,13 +55,14 @@ const updateMemberRoleValidation = [
 router.post('/', authenticate, createWorkspaceValidation, validate, workspaceController.createWorkspace);
 router.get('/', authenticate, workspaceController.getUserWorkspaces);
 router.post('/join/:inviteCode', authenticate, workspaceController.joinWorkspace);
-router.get('/:id', authenticate, workspaceController.getWorkspaceById);
-router.put('/:id', authenticate, updateWorkspaceValidation, validate, workspaceController.updateWorkspace);
-router.delete('/:id', authenticate, workspaceController.deleteWorkspace);
-router.post('/:id/invite', authenticate, inviteLinkValidation, validate, workspaceController.generateInviteLink);
+router.get('/:id/board/:boardId', authenticate, boardController.getBoardDashboard);
 router.get('/:id/members', authenticate, workspaceController.getWorkspaceMembers);
 router.delete('/:id/members/:memberId', authenticate, workspaceController.removeMember);
 router.patch('/:id/members/:memberId', authenticate, updateMemberRoleValidation, validate, workspaceController.updateMemberRole);
+router.post('/:id/invite', authenticate, inviteLinkValidation, validate, workspaceController.generateInviteLink);
+router.get('/:id', authenticate, workspaceController.getWorkspaceById);
+router.put('/:id', authenticate, updateWorkspaceValidation, validate, workspaceController.updateWorkspace);
+router.delete('/:id', authenticate, workspaceController.deleteWorkspace);
 
 module.exports = router;
 

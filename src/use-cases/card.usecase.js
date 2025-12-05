@@ -322,6 +322,141 @@ class CardUseCase {
       await Promise.all(updatePromises);
     }
   }
+
+  async filterCards(boardId, userId, filters) {
+    const board = await BoardModel.findById(boardId);
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
+    const membership = await WorkspaceMemberModel.findOne({
+      workspaceId: board.workspaceId,
+      userId,
+    });
+
+    if (!membership) {
+      throw new Error('You are not a member of this workspace');
+    }
+
+    const query = { boardId };
+
+    if (filters.members && filters.members.length > 0) {
+      query.assignedTo = { $in: filters.members };
+    }
+
+    if (filters.labels && filters.labels.length > 0) {
+      query.labels = { $in: filters.labels };
+    }
+
+    if (filters.dueDate) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayAfterTomorrow = new Date(tomorrow);
+      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+      switch (filters.dueDate) {
+        case 'overdue':
+          query.dueDate = { $lt: today };
+          break;
+        case 'today':
+          query.dueDate = { $gte: today, $lt: tomorrow };
+          break;
+        case 'tomorrow':
+          query.dueDate = { $gte: tomorrow, $lt: dayAfterTomorrow };
+          break;
+      }
+    }
+
+    const cards = await CardModel.find(query)
+      .populate('createdBy', 'name email avatar')
+      .populate('assignedTo', 'name email avatar')
+      .populate('stageId', 'name position')
+      .sort({ position: 1 });
+
+    return cards.map(card => ({
+      id: card._id,
+      title: card.title,
+      description: card.description,
+      stageId: card.stageId._id,
+      stageName: card.stageId.name,
+      boardId: card.boardId,
+      position: card.position,
+      priority: card.priority,
+      labels: card.labels,
+      dueDate: card.dueDate,
+      createdBy: card.createdBy ? {
+        id: card.createdBy._id,
+        name: card.createdBy.name,
+        email: card.createdBy.email,
+        avatar: card.createdBy.avatar,
+      } : null,
+      assignedTo: card.assignedTo.map(user => ({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      })),
+      createdAt: card.createdAt,
+      updatedAt: card.updatedAt,
+    }));
+  }
+
+  async searchCards(boardId, userId, searchTerm) {
+    const board = await BoardModel.findById(boardId);
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
+    const membership = await WorkspaceMemberModel.findOne({
+      workspaceId: board.workspaceId,
+      userId,
+    });
+
+    if (!membership) {
+      throw new Error('You are not a member of this workspace');
+    }
+
+    const cards = await CardModel.find({
+      boardId,
+      $or: [
+        { title: { $regex: searchTerm, $options: 'i' } },
+        { description: { $regex: searchTerm, $options: 'i' } },
+      ],
+    })
+      .populate('createdBy', 'name email avatar')
+      .populate('assignedTo', 'name email avatar')
+      .populate('stageId', 'name position')
+      .sort({ position: 1 });
+
+    return cards.map(card => ({
+      id: card._id,
+      title: card.title,
+      description: card.description,
+      stageId: card.stageId._id,
+      stageName: card.stageId.name,
+      boardId: card.boardId,
+      position: card.position,
+      priority: card.priority,
+      labels: card.labels,
+      dueDate: card.dueDate,
+      createdBy: card.createdBy ? {
+        id: card.createdBy._id,
+        name: card.createdBy.name,
+        email: card.createdBy.email,
+        avatar: card.createdBy.avatar,
+      } : null,
+      assignedTo: card.assignedTo.map(user => ({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      })),
+      createdAt: card.createdAt,
+      updatedAt: card.updatedAt,
+    }));
+  }
 }
 
 module.exports = new CardUseCase();

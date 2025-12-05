@@ -187,6 +187,25 @@ class BoardController {
       });
     }
   }
+
+  async getBoardDashboard(req, res) {
+    try {
+      const { id: workspaceId, boardId } = req.params;
+      const userId = req.userId;
+
+      const dashboard = await boardUseCase.getBoardDashboard(workspaceId, boardId, userId);
+
+      res.status(200).json({
+        status: 'success',
+        data: dashboard,
+      });
+    } catch (error) {
+      res.status(400).json({
+        status: 'error',
+        message: error.message,
+      });
+    }
+  }
 }
 
 module.exports = new BoardController();

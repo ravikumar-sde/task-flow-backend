@@ -150,6 +150,64 @@ class CardController {
       });
     }
   }
+
+  async filterCards(req, res) {
+    try {
+      const { boardId } = req.params;
+      const userId = req.userId;
+      const { members, labels, dueDate } = req.query;
+
+      const filters = {};
+      if (members) {
+        filters.members = Array.isArray(members) ? members : [members];
+      }
+      if (labels) {
+        filters.labels = Array.isArray(labels) ? labels : [labels];
+      }
+      if (dueDate) {
+        filters.dueDate = dueDate;
+      }
+
+      const cards = await cardUseCase.filterCards(boardId, userId, filters);
+
+      res.status(200).json({
+        status: 'success',
+        data: cards,
+      });
+    } catch (error) {
+      res.status(400).json({
+        status: 'error',
+        message: error.message,
+      });
+    }
+  }
+
+  async searchCards(req, res) {
+    try {
+      const { boardId } = req.params;
+      const userId = req.userId;
+      const { q } = req.query;
+
+      if (!q || q.trim().length === 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Search query is required',
+        });
+      }
+
+      const cards = await cardUseCase.searchCards(boardId, userId, q.trim());
+
+      res.status(200).json({
+        status: 'success',
+        data: cards,
+      });
+    } catch (error) {
+      res.status(400).json({
+        status: 'error',
+        message: error.message,
+      });
+    }
+  }
 }
 
 module.exports = new CardController();

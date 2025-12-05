@@ -44,6 +44,7 @@ const updateBoardValidation = [
 ];
 
 router.get('/favorites', authenticate, boardController.getFavoriteBoards);
+router.get('/workspace/:workspaceId', authenticate, boardController.getWorkspaceBoards);
 router.post('/', authenticate, createBoardValidation, validate, boardController.createBoard);
 router.get('/:id', authenticate, boardController.getBoardById);
 router.put('/:id', authenticate, updateBoardValidation, validate, boardController.updateBoard);
@@ -51,7 +52,6 @@ router.delete('/:id', authenticate, boardController.deleteBoard);
 router.post('/:id/archive', authenticate, boardController.archiveBoard);
 router.post('/:id/unarchive', authenticate, boardController.unarchiveBoard);
 router.post('/:id/favorite', authenticate, boardController.toggleFavorite);
-router.get('/workspace/:workspaceId', authenticate, boardController.getWorkspaceBoards);
 
 module.exports = router;
 

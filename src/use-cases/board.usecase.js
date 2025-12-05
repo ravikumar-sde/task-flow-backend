@@ -2,6 +2,8 @@ const Board = require('../entities/Board');
 const BoardModel = require('../database/models/BoardModel');
 const WorkspaceModel = require('../database/models/WorkspaceModel');
 const WorkspaceMemberModel = require('../database/models/WorkspaceMemberModel');
+const StageModel = require('../database/models/StageModel');
+const CardModel = require('../database/models/CardModel');
 
 class BoardUseCase {
   async createBoard({ name, description, workspaceId, backgroundColor, userId }) {
@@ -238,6 +240,95 @@ class BoardUseCase {
         avatar: b.createdBy.avatar,
       },
     }));
+  }
+
+  async getBoardDashboard(workspaceId, boardId, userId) {
+    const membership = await WorkspaceMemberModel.findOne({
+      workspaceId,
+      userId,
+    });
+
+    if (!membership) {
+      throw new Error('You do not have access to this workspace');
+    }
+
+    const board = await BoardModel.findOne({
+      _id: boardId,
+      workspaceId,
+    }).populate('createdBy', 'name email avatar');
+
+    if (!board) {
+      throw new Error('Board not found in this workspace');
+    }
+
+    const stages = await StageModel.find({ boardId })
+      .sort({ position: 1 })
+      .lean();
+
+    const stageIds = stages.map(s => s._id);
+    const cards = await CardModel.find({ stageId: { $in: stageIds } })
+      .populate('createdBy', 'name email avatar')
+      .populate('assignedTo', 'name email avatar')
+      .sort({ position: 1 })
+      .lean();
+
+    const stagesWithCards = stages.map(stage => ({
+      id: stage._id,
+      name: stage.name,
+      boardId: stage.boardId,
+      position: stage.position,
+      createdAt: stage.createdAt,
+      updatedAt: stage.updatedAt,
+      cards: cards
+        .filter(card => card.stageId.toString() === stage._id.toString())
+        .map(card => ({
+          id: card._id,
+          title: card.title,
+          description: card.description,
+          stageId: card.stageId,
+          boardId: card.boardId,
+          position: card.position,
+          priority: card.priority,
+          labels: card.labels,
+          dueDate: card.dueDate,
+          createdBy: card.createdBy ? {
+            id: card.createdBy._id,
+            name: card.createdBy.name,
+            email: card.createdBy.email,
+            avatar: card.createdBy.avatar,
+          } : null,
+          assignedTo: card.assignedTo.map(user => ({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+          })),
+          createdAt: card.createdAt,
+          updatedAt: card.updatedAt,
+        })),
+    }));
+
+    return {
+      board: {
+        id: board._id,
+        name: board.name,
+        description: board.description,
+        workspaceId: board.workspaceId,
+        backgroundColor: board.backgroundColor,
+        isFavorite: board.isFavorite,
+        isArchived: board.isArchived,
+        createdBy: board.createdBy ? {
+          id: board.createdBy._id,
+          name: board.createdBy.name,
+          email: board.createdBy.email,
+          avatar: board.createdBy.avatar,
+        } : null,
+        createdAt: board.createdAt,
+        updatedAt: board.updatedAt,
+      },
+      stages: stagesWithCards,
+      memberRole: membership.role,
+    };
   }
 }
 
