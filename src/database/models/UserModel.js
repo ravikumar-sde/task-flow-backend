@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-/**
- * User Schema
- * Database representation of User entity with authentication support
- */
-
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -24,7 +19,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      select: false, // Don't include password in queries by default
+      select: false,
       minlength: [6, 'Password must be at least 6 characters long'],
     },
     authProvider: {
@@ -34,7 +29,7 @@ const userSchema = new mongoose.Schema(
     },
     providerId: {
       type: String,
-      sparse: true, // Allow multiple null values but unique non-null values
+      sparse: true,
     },
     avatar: {
       type: String,
@@ -52,36 +47,25 @@ const userSchema = new mongoose.Schema(
     }],
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Indexes
-userSchema.index({ email: 1 });
 userSchema.index({ providerId: 1, authProvider: 1 });
 
-// Pre-save middleware to hash password
-userSchema.pre('save', async function (next) {
-  // Only hash the password if it has been modified (or is new)
+userSchema.pre('save', async function () {
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
 
-  // Don't hash if password is not set (OAuth users)
   if (!this.password) {
-    return next();
+    return;
   }
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Instance method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) {
     return false;
@@ -89,7 +73,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Instance method to generate safe user object (without sensitive data)
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
   return {
@@ -104,7 +87,6 @@ userSchema.methods.toJSON = function () {
   };
 };
 
-// Instance method to get public profile
 userSchema.methods.getPublicProfile = function () {
   return {
     id: this._id,
