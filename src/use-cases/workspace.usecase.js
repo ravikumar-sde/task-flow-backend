@@ -3,6 +3,7 @@ const WorkspaceMember = require('../entities/WorkspaceMember');
 const WorkspaceModel = require('../database/models/WorkspaceModel');
 const WorkspaceMemberModel = require('../database/models/WorkspaceMemberModel');
 const UserModel = require('../database/models/UserModel');
+const kafkaProducer = require('../services/kafka.producer');
 
 class WorkspaceUseCase {
   async createWorkspace({ name, description, isPrivate = true, userId }) {
@@ -111,10 +112,21 @@ class WorkspaceUseCase {
       throw new Error('Only the workspace owner can delete it');
     }
 
+    // Delete workspace members first
     await WorkspaceMemberModel.deleteMany({ workspaceId });
+
+    // Delete the workspace immediately
     await WorkspaceModel.findByIdAndDelete(workspaceId);
 
-    return { message: 'Workspace deleted successfully' };
+    // Publish event to Kafka for asynchronous cleanup of related data (boards, stages, cards, comments)
+    // This happens in the background and doesn't block the response
+    await kafkaProducer.publishWorkspaceDeletionEvent(workspaceId, userId);
+
+    return {
+      message: 'Workspace deleted successfully. Related data cleanup is in progress.',
+      workspaceId,
+      status: 'deleted'
+    };
   }
 
   async generateInviteLink(workspaceId, userId, expiryDays = 7) {
