@@ -47,6 +47,46 @@ class AuthController {
   }
 
   /**
+   * Verify email with verification code
+   * POST /api/v1/auth/verify-email
+   */
+  async verifyEmail(req, res, next) {
+    try {
+      const { email, code } = req.body;
+
+      const result = await authUseCase.verifyEmail({ email, code });
+
+      res.status(200).json({
+        status: 'success',
+        message: result.message,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Resend verification code
+   * POST /api/v1/auth/resend-verification
+   */
+  async resendVerification(req, res, next) {
+    try {
+      const { email } = req.body;
+
+      const result = await authUseCase.resendVerificationCode({ email });
+
+      res.status(200).json({
+        status: 'success',
+        message: result.message,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * OAuth callback handler
    * Generates JWT tokens after successful OAuth authentication
    */

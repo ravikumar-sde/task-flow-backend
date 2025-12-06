@@ -30,4 +30,8 @@ build/
 # Testing
 coverage/
 .nyc_output/
+test-email.js
 
+# Temporary files
+*.tmp
+*.temp
