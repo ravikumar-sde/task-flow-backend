@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../entities/User');
 const UserModel = require('../database/models/UserModel');
 const config = require('../config/server');
+const emailService = require('../services/email.service');
 
 /**
  * Authentication Use Cases
@@ -57,26 +58,28 @@ class AuthUseCase {
       throw new Error('User with this email already exists');
     }
 
+    // Generate verification code
+    const verificationCode = emailService.generateVerificationCode();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
     // Save to database (password will be hashed by pre-save hook)
     const savedUser = await UserModel.create({
       name,
       email,
       password,
       authProvider: 'local',
+      isEmailVerified: false,
+      emailVerificationCode: verificationCode,
+      emailVerificationExpiry: verificationExpiry,
     });
 
-    // Generate tokens
-    const token = this.generateToken(savedUser._id);
-    const refreshToken = this.generateRefreshToken(savedUser._id);
-
-    // Save refresh token
-    savedUser.refreshTokens.push({ token: refreshToken });
-    await savedUser.save();
+    // Send verification email
+    await emailService.sendVerificationEmail(email, name, verificationCode);
 
     return {
       user: savedUser.toJSON(),
-      token,
-      refreshToken,
+      message: 'Signup successful! Please check your email for verification code.',
+      emailSent: emailService.isAvailable(),
     };
   }
 
@@ -105,6 +108,11 @@ class AuthUseCase {
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       throw new Error('Invalid email or password');
+    }
+
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      throw new Error('Please verify your email before logging in. Check your inbox for the verification code.');
     }
 
     // Generate tokens
@@ -200,6 +208,109 @@ class AuthUseCase {
     } catch (error) {
       throw new Error('Invalid or expired refresh token');
     }
+  }
+
+  /**
+   * Verify email with verification code
+   */
+  async verifyEmail({ email, code }) {
+    // Validate input
+    if (!email || !code) {
+      throw new Error('Email and verification code are required');
+    }
+
+    // Find user and include verification fields
+    const user = await UserModel.findOne({ email })
+      .select('+emailVerificationCode +emailVerificationExpiry');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if already verified
+    if (user.isEmailVerified) {
+      throw new Error('Email is already verified');
+    }
+
+    // Check if verification code exists
+    if (!user.emailVerificationCode || !user.emailVerificationExpiry) {
+      throw new Error('No verification code found. Please request a new one.');
+    }
+
+    // Check if code has expired
+    if (new Date() > user.emailVerificationExpiry) {
+      throw new Error('Verification code has expired. Please request a new one.');
+    }
+
+    // Verify the code
+    if (user.emailVerificationCode !== code) {
+      throw new Error('Invalid verification code');
+    }
+
+    // Mark email as verified and clear verification fields
+    user.isEmailVerified = true;
+    user.emailVerificationCode = undefined;
+    user.emailVerificationExpiry = undefined;
+    await user.save();
+
+    // Generate tokens for automatic login after verification
+    const token = this.generateToken(user._id);
+    const refreshToken = this.generateRefreshToken(user._id);
+
+    // Save refresh token
+    user.refreshTokens.push({ token: refreshToken });
+    await user.save();
+
+    return {
+      user: user.toJSON(),
+      token,
+      refreshToken,
+      message: 'Email verified successfully! You can now login.',
+    };
+  }
+
+  /**
+   * Resend verification code
+   */
+  async resendVerificationCode({ email }) {
+    // Validate input
+    if (!email) {
+      throw new Error('Email is required');
+    }
+
+    // Find user
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if already verified
+    if (user.isEmailVerified) {
+      throw new Error('Email is already verified');
+    }
+
+    // Check if user is using local authentication
+    if (user.authProvider !== 'local') {
+      throw new Error('Email verification is only required for local authentication');
+    }
+
+    // Generate new verification code
+    const verificationCode = emailService.generateVerificationCode();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Update user with new code
+    user.emailVerificationCode = verificationCode;
+    user.emailVerificationExpiry = verificationExpiry;
+    await user.save();
+
+    // Send verification email
+    await emailService.sendVerificationEmail(email, user.name, verificationCode);
+
+    return {
+      message: 'Verification code sent successfully! Please check your email.',
+      emailSent: emailService.isAvailable(),
+    };
   }
 
   /**

@@ -2,8 +2,9 @@
 	"info": {
 		"_postman_id": "trello-backend-api-collection",
 		"name": "Trello Backend API",
-		"description": "Complete API collection for Trello Backend with Authentication",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"description": "Complete API collection for Trello Backend with Authentication, Email Verification, Workspaces, Boards, Stages, Cards, and Comments",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "2.0.0"
 	},
 	"item": [
 		{
@@ -29,23 +30,6 @@
 			"item": [
 				{
 					"name": "Sign Up",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201 || pm.response.code === 200) {",
-									"    var jsonData = pm.response.json();",
-									"    if (jsonData.data && jsonData.data.token) {",
-									"        pm.environment.set('token', jsonData.data.token);",
-									"        pm.environment.set('refreshToken', jsonData.data.refreshToken);",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -62,7 +46,8 @@
 							"raw": "{{base_url}}/api/v1/auth/signup",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "signup"]
-						}
+						},
+						"description": "Register a new user account. A 6-digit verification code will be sent to the provided email address. User must verify email before logging in."
 					},
 					"response": []
 				},
@@ -101,7 +86,8 @@
 							"raw": "{{base_url}}/api/v1/auth/login",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "login"]
-						}
+						},
+						"description": "Login with email and password. Note: Email must be verified before login. OAuth users (Google/GitHub) are automatically verified."
 					},
 					"response": []
 				},
@@ -214,6 +200,68 @@
 					"response": []
 				},
 				{
+					"name": "Verify Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('token', jsonData.data.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john@example.com\",\n  \"code\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/verify-email",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "verify-email"]
+						},
+						"description": "Verify email address with the 6-digit code sent to the user's email. Upon successful verification, user is automatically logged in and receives a JWT token."
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/resend-verification",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "resend-verification"]
+						},
+						"description": "Resend verification code to the user's email. A new 6-digit code will be generated and sent. Previous code will be invalidated."
+					},
+					"response": []
+				},
+				{
 					"name": "Google OAuth - Initiate",
 					"request": {
 						"method": "GET",
@@ -222,7 +270,8 @@
 							"raw": "{{base_url}}/api/v1/auth/google",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "google"]
-						}
+						},
+						"description": "Initiate Google OAuth authentication flow. Redirects to Google login page."
 					},
 					"response": []
 				},
@@ -235,7 +284,8 @@
 							"raw": "{{base_url}}/api/v1/auth/github",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "github"]
-						}
+						},
+						"description": "Initiate GitHub OAuth authentication flow. Redirects to GitHub login page."
 					},
 					"response": []
 				}

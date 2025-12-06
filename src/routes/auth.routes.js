@@ -6,6 +6,8 @@ const {
   signupValidation,
   loginValidation,
   updateProfileValidation,
+  verifyEmailValidation,
+  resendVerificationValidation,
   validate,
 } = require('../middlewares/validation.middleware');
 
@@ -42,6 +44,30 @@ router.post(
   loginValidation,
   validate,
   authController.login.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/verify-email
+ * @desc    Verify email with verification code
+ * @access  Public
+ */
+router.post(
+  '/verify-email',
+  verifyEmailValidation,
+  validate,
+  authController.verifyEmail.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/resend-verification
+ * @desc    Resend verification code to email
+ * @access  Public
+ */
+router.post(
+  '/resend-verification',
+  resendVerificationValidation,
+  validate,
+  authController.resendVerification.bind(authController)
 );
 
 /**
