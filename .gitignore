@@ -35,3 +35,10 @@ test-email.js
 # Temporary files
 *.tmp
 *.temp
+
+# Test files
+test-email.js
+test-sendgrid.js
+
+# OAuth credentials
+google_oauth.json

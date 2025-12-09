@@ -1,40 +1,47 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 /**
  * Email Service
  * Handles all email-related operations including sending verification emails
+ * Uses SendGrid for reliable email delivery
  */
 class EmailService {
   constructor() {
-    this.transporter = null;
-    this.initializeTransporter();
+    this.isConfigured = false;
+    this.fromEmail = null;
+    this.initializeSendGrid();
   }
 
   /**
-   * Initialize nodemailer transporter with SMTP configuration
+   * Initialize SendGrid with API key
    */
-  initializeTransporter() {
-    // Check if email configuration is available
-    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('⚠️  Email service not configured. Email features will be disabled.');
-      console.warn('   Set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS in .env to enable email features.');
+  initializeSendGrid() {
+    // Check if SendGrid API key is available
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn('⚠️  SendGrid API key not configured. Email features will be disabled.');
+      console.warn('   Set SENDGRID_API_KEY in .env to enable email features.');
+      return;
+    }
+
+    // Check if sender email is configured
+    if (!process.env.EMAIL_USER) {
+      console.warn('⚠️  Sender email not configured. Email features will be disabled.');
+      console.warn('   Set EMAIL_USER in .env to enable email features.');
       return;
     }
 
     try {
-      this.transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: parseInt(process.env.EMAIL_PORT || '587'),
-        secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+      // Set SendGrid API key
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-      console.log('✅ Email service initialized successfully');
+      // Set sender email
+      this.fromEmail = process.env.EMAIL_USER;
+      this.isConfigured = true;
+
+      console.log('✅ SendGrid email service initialized successfully');
+      console.log(`   Sender email: ${this.fromEmail}`);
     } catch (error) {
-      console.error('❌ Failed to initialize email service:', error.message);
+      console.error('❌ Failed to initialize SendGrid:', error.message);
     }
   }
 
@@ -42,7 +49,7 @@ class EmailService {
    * Check if email service is available
    */
   isAvailable() {
-    return this.transporter !== null;
+    return this.isConfigured;
   }
 
   /**
@@ -53,7 +60,7 @@ class EmailService {
   }
 
   /**
-   * Send verification email to user
+   * Send verification email to user using SendGrid
    */
   async sendVerificationEmail(email, name, verificationCode) {
     if (!this.isAvailable()) {
@@ -62,84 +69,97 @@ class EmailService {
     }
 
     try {
-      const mailOptions = {
-        from: `"Task Flow" <${process.env.EMAIL_USER}>`,
+      const msg = {
         to: email,
+        from: {
+          email: this.fromEmail,
+          name: process.env.EMAIL_FROM_NAME || 'Task Flow'
+        },
         subject: 'Verify Your Email - Task Flow',
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-              .code-box { background: white; border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
-              .code { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px; }
-              .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-              .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>🎉 Welcome to Task Flow!</h1>
-              </div>
-              <div class="content">
-                <p>Hi <strong>${name}</strong>,</p>
-                <p>Thank you for signing up! Please verify your email address to complete your registration.</p>
-                
-                <div class="code-box">
-                  <p style="margin: 0; font-size: 14px; color: #666;">Your verification code is:</p>
-                  <div class="code">${verificationCode}</div>
-                  <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">This code will expire in 15 minutes</p>
-                </div>
-                
-                <p>Enter this code in the verification page to activate your account.</p>
-                
-                <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
-                  If you didn't create an account with Task Flow, please ignore this email.
-                </p>
-                
-                <p style="margin-top: 20px;">
-                  Best regards,<br>
-                  The Task Flow Team
-                </p>
-              </div>
-              <div class="footer">
-                <p>© 2024 Task Flow. All rights reserved.</p>
-              </div>
-            </div>
-          </body>
-          </html>
-        `,
         text: `
-          Welcome to Task Flow App!
-          
-          Hi ${name},
-          
-          Thank you for signing up for Task Flow App!
-          
-          Your verification code is: ${verificationCode}
-          
-          This code will expire in 15 minutes.
-          
-          If you didn't create an account, please ignore this email.
-          
-          Best regards,
-          The Task Flow App Team
+Welcome to Task Flow!
+
+Hi ${name},
+
+Thank you for signing up for Task Flow!
+
+Your verification code is: ${verificationCode}
+
+This code will expire in 15 minutes.
+
+If you didn't create an account, please ignore this email.
+
+Best regards,
+The Task Flow Team
+        `,
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+    .code-box { background: white; border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+    .code { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 Welcome to Task Flow!</h1>
+    </div>
+    <div class="content">
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Thank you for signing up! Please verify your email address to complete your registration.</p>
+
+      <div class="code-box">
+        <p style="margin: 0; font-size: 14px; color: #666;">Your verification code is:</p>
+        <div class="code">${verificationCode}</div>
+        <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">This code will expire in 15 minutes</p>
+      </div>
+
+      <p>Enter this code in the verification page to activate your account.</p>
+
+      <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
+        If you didn't create an account with Task Flow, please ignore this email.
+      </p>
+
+      <p style="margin-top: 20px;">
+        Best regards,<br>
+        The Task Flow Team
+      </p>
+    </div>
+    <div class="footer">
+      <p>© 2024 Task Flow. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
         `,
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Verification email sent to ${email}. Message ID: ${info.messageId}`);
-      
-      return { success: true, messageId: info.messageId };
+      const response = await sgMail.send(msg);
+      console.log(`✅ Verification email sent to ${email} via SendGrid`);
+      console.log(`   Status: ${response[0].statusCode}`);
+
+      return {
+        success: true,
+        messageId: response[0].headers['x-message-id'],
+        statusCode: response[0].statusCode
+      };
     } catch (error) {
       console.error(`❌ Failed to send verification email to ${email}:`, error.message);
+
+      // Log detailed error for debugging
+      if (error.response) {
+        console.error(`   SendGrid Error: ${error.response.body.errors[0].message}`);
+      }
+
       return { success: false, message: error.message };
     }
   }

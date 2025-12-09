@@ -30,6 +30,23 @@
 			"item": [
 				{
 					"name": "Sign Up",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('token', jsonData.data.token);",
+									"        pm.environment.set('refreshToken', jsonData.data.refreshToken);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -47,7 +64,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "signup"]
 						},
-						"description": "Register a new user account. A 6-digit verification code will be sent to the provided email address. User must verify email before logging in."
+						"description": "Register a new user account. User is automatically logged in after successful signup."
 					},
 					"response": []
 				},
@@ -87,7 +104,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "login"]
 						},
-						"description": "Login with email and password. Note: Email must be verified before login. OAuth users (Google/GitHub) are automatically verified."
+						"description": "Login with email and password. Returns JWT token and refresh token for authentication."
 					},
 					"response": []
 				},
@@ -200,23 +217,7 @@
 					"response": []
 				},
 				{
-					"name": "Verify Email",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    var jsonData = pm.response.json();",
-									"    if (jsonData.data && jsonData.data.token) {",
-									"        pm.environment.set('token', jsonData.data.token);",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
+					"name": "Forgot Password",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -227,22 +228,26 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"john@example.com\",\n  \"code\": \"123456\"\n}"
+							"raw": "{\n  \"email\": \"john@example.com\",\n  \"newPassword\": \"newpassword123\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/auth/verify-email",
+							"raw": "{{base_url}}/api/v1/auth/forgot-password",
 							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "auth", "verify-email"]
+							"path": ["api", "v1", "auth", "forgot-password"]
 						},
-						"description": "Verify email address with the 6-digit code sent to the user's email. Upon successful verification, user is automatically logged in and receives a JWT token."
+						"description": "Reset password without email verification. Simple implementation - user provides email and new password. Only works for local authentication users (not OAuth users)."
 					},
 					"response": []
 				},
 				{
-					"name": "Resend Verification Code",
+					"name": "Change Password",
 					"request": {
 						"method": "POST",
 						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json"
@@ -250,14 +255,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"john@example.com\"\n}"
+							"raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newpassword456\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/auth/resend-verification",
+							"raw": "{{base_url}}/api/v1/auth/change-password",
 							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "auth", "resend-verification"]
+							"path": ["api", "v1", "auth", "change-password"]
 						},
-						"description": "Resend verification code to the user's email. A new 6-digit code will be generated and sent. Previous code will be invalidated."
+						"description": "Change password for authenticated user. User must provide current password and new password. Only works for local authentication users (not OAuth users)."
 					},
 					"response": []
 				},

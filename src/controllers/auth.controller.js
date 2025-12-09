@@ -47,56 +47,16 @@ class AuthController {
   }
 
   /**
-   * Verify email with verification code
-   * POST /api/v1/auth/verify-email
-   */
-  async verifyEmail(req, res, next) {
-    try {
-      const { email, code } = req.body;
-
-      const result = await authUseCase.verifyEmail({ email, code });
-
-      res.status(200).json({
-        status: 'success',
-        message: result.message,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Resend verification code
-   * POST /api/v1/auth/resend-verification
-   */
-  async resendVerification(req, res, next) {
-    try {
-      const { email } = req.body;
-
-      const result = await authUseCase.resendVerificationCode({ email });
-
-      res.status(200).json({
-        status: 'success',
-        message: result.message,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
    * OAuth callback handler
    * Generates JWT tokens after successful OAuth authentication
+   * Redirects to frontend with tokens
    */
   async oauthCallback(req, res, next) {
     try {
       if (!req.user) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Authentication failed',
-        });
+        // Redirect to frontend with error
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent('Authentication failed')}`);
       }
 
       // Generate tokens
@@ -107,20 +67,16 @@ class AuthController {
       req.user.refreshTokens.push({ token: refreshToken });
       await req.user.save();
 
-      // Redirect to frontend with tokens (or send as JSON)
-      // For development, we'll send as JSON
-      // In production, you might want to redirect to frontend with tokens in URL
-      res.status(200).json({
-        status: 'success',
-        message: 'OAuth authentication successful',
-        data: {
-          user: req.user.toJSON(),
-          token,
-          refreshToken,
-        },
-      });
+      // Redirect to frontend with tokens in URL parameters
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const redirectUrl = `${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+      
+      console.log('🔐 OAuth Success - Redirecting to:', redirectUrl);
+      res.redirect(redirectUrl);
     } catch (error) {
-      next(error);
+      console.error('❌ OAuth Callback Error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error.message || 'Authentication failed')}`);
     }
   }
 
@@ -206,7 +162,49 @@ class AuthController {
       next(error);
     }
   }
+
+  /**
+   * Forgot password - Reset password without email verification
+   * POST /api/v1/auth/forgot-password
+   */
+  async forgotPassword(req, res, next) {
+    try {
+      const { email, newPassword } = req.body;
+
+      const result = await authUseCase.forgotPassword({ email, newPassword });
+
+      res.status(200).json({
+        status: 'success',
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Change password - For authenticated users
+   * POST /api/v1/auth/change-password
+   */
+  async changePassword(req, res, next) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      const result = await authUseCase.changePassword({
+        userId,
+        currentPassword,
+        newPassword,
+      });
+
+      res.status(200).json({
+        status: 'success',
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();
-

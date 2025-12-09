@@ -2,7 +2,6 @@ const jwt = require('jsonwebtoken');
 const User = require('../entities/User');
 const UserModel = require('../database/models/UserModel');
 const config = require('../config/server');
-const emailService = require('../services/email.service');
 
 /**
  * Authentication Use Cases
@@ -58,28 +57,27 @@ class AuthUseCase {
       throw new Error('User with this email already exists');
     }
 
-    // Generate verification code
-    const verificationCode = emailService.generateVerificationCode();
-    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
     // Save to database (password will be hashed by pre-save hook)
     const savedUser = await UserModel.create({
       name,
       email,
       password,
       authProvider: 'local',
-      isEmailVerified: false,
-      emailVerificationCode: verificationCode,
-      emailVerificationExpiry: verificationExpiry,
     });
 
-    // Send verification email
-    await emailService.sendVerificationEmail(email, name, verificationCode);
+    // Generate tokens for automatic login after signup
+    const token = this.generateToken(savedUser._id);
+    const refreshToken = this.generateRefreshToken(savedUser._id);
+
+    // Save refresh token
+    savedUser.refreshTokens.push({ token: refreshToken });
+    await savedUser.save();
 
     return {
       user: savedUser.toJSON(),
-      message: 'Signup successful! Please check your email for verification code.',
-      emailSent: emailService.isAvailable(),
+      token,
+      refreshToken,
+      message: 'Signup successful! You are now logged in.',
     };
   }
 
@@ -108,11 +106,6 @@ class AuthUseCase {
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       throw new Error('Invalid email or password');
-    }
-
-    // Check if email is verified
-    if (!user.isEmailVerified) {
-      throw new Error('Please verify your email before logging in. Check your inbox for the verification code.');
     }
 
     // Generate tokens
@@ -147,7 +140,6 @@ class AuthUseCase {
         user.providerId = providerId;
         user.authProvider = authProvider;
         if (avatar) user.avatar = avatar;
-        user.isEmailVerified = true; // OAuth emails are verified
         await user.save();
       } else {
         // Create new user
@@ -157,7 +149,6 @@ class AuthUseCase {
           providerId,
           authProvider,
           avatar,
-          isEmailVerified: true,
         });
       }
     }
@@ -211,109 +202,6 @@ class AuthUseCase {
   }
 
   /**
-   * Verify email with verification code
-   */
-  async verifyEmail({ email, code }) {
-    // Validate input
-    if (!email || !code) {
-      throw new Error('Email and verification code are required');
-    }
-
-    // Find user and include verification fields
-    const user = await UserModel.findOne({ email })
-      .select('+emailVerificationCode +emailVerificationExpiry');
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Check if already verified
-    if (user.isEmailVerified) {
-      throw new Error('Email is already verified');
-    }
-
-    // Check if verification code exists
-    if (!user.emailVerificationCode || !user.emailVerificationExpiry) {
-      throw new Error('No verification code found. Please request a new one.');
-    }
-
-    // Check if code has expired
-    if (new Date() > user.emailVerificationExpiry) {
-      throw new Error('Verification code has expired. Please request a new one.');
-    }
-
-    // Verify the code
-    if (user.emailVerificationCode !== code) {
-      throw new Error('Invalid verification code');
-    }
-
-    // Mark email as verified and clear verification fields
-    user.isEmailVerified = true;
-    user.emailVerificationCode = undefined;
-    user.emailVerificationExpiry = undefined;
-    await user.save();
-
-    // Generate tokens for automatic login after verification
-    const token = this.generateToken(user._id);
-    const refreshToken = this.generateRefreshToken(user._id);
-
-    // Save refresh token
-    user.refreshTokens.push({ token: refreshToken });
-    await user.save();
-
-    return {
-      user: user.toJSON(),
-      token,
-      refreshToken,
-      message: 'Email verified successfully! You can now login.',
-    };
-  }
-
-  /**
-   * Resend verification code
-   */
-  async resendVerificationCode({ email }) {
-    // Validate input
-    if (!email) {
-      throw new Error('Email is required');
-    }
-
-    // Find user
-    const user = await UserModel.findOne({ email });
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Check if already verified
-    if (user.isEmailVerified) {
-      throw new Error('Email is already verified');
-    }
-
-    // Check if user is using local authentication
-    if (user.authProvider !== 'local') {
-      throw new Error('Email verification is only required for local authentication');
-    }
-
-    // Generate new verification code
-    const verificationCode = emailService.generateVerificationCode();
-    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-    // Update user with new code
-    user.emailVerificationCode = verificationCode;
-    user.emailVerificationExpiry = verificationExpiry;
-    await user.save();
-
-    // Send verification email
-    await emailService.sendVerificationEmail(email, user.name, verificationCode);
-
-    return {
-      message: 'Verification code sent successfully! Please check your email.',
-      emailSent: emailService.isAvailable(),
-    };
-  }
-
-  /**
    * Logout user
    */
   async logout(userId, refreshToken) {
@@ -360,6 +248,79 @@ class AuthUseCase {
 
     await user.save();
     return user.toJSON();
+  }
+
+  /**
+   * Forgot password - Reset password without email verification
+   * Simple implementation: User provides email and new password
+   */
+  async forgotPassword({ email, newPassword }) {
+    // Find user by email
+    const user = await UserModel.findOne({ email }).select('+password');
+
+    if (!user) {
+      throw new Error('User not found with this email');
+    }
+
+    // Check if user is using OAuth (cannot reset password for OAuth users)
+    if (user.authProvider !== 'local') {
+      throw new Error(`This account uses ${user.authProvider} authentication. Password reset is not available.`);
+    }
+
+    // Validate new password
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long');
+    }
+
+    // Update password (will be hashed by pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    return {
+      message: 'Password has been reset successfully. You can now login with your new password.',
+    };
+  }
+
+  /**
+   * Change password - For authenticated users
+   * User must provide current password and new password
+   */
+  async changePassword({ userId, currentPassword, newPassword }) {
+    // Find user with password field
+    const user = await UserModel.findById(userId).select('+password');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if user is using OAuth (cannot change password for OAuth users)
+    if (user.authProvider !== 'local') {
+      throw new Error(`This account uses ${user.authProvider} authentication. Password change is not available.`);
+    }
+
+    // Verify current password
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Validate new password
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long');
+    }
+
+    // Check if new password is same as current password
+    if (currentPassword === newPassword) {
+      throw new Error('New password must be different from current password');
+    }
+
+    // Update password (will be hashed by pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    return {
+      message: 'Password has been changed successfully',
+    };
   }
 }
 

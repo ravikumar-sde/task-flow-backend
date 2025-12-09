@@ -13,7 +13,6 @@ class User {
     authProvider = 'local',
     providerId,
     avatar,
-    isEmailVerified = false,
     createdAt,
     updatedAt
   }) {
@@ -24,7 +23,6 @@ class User {
     this.authProvider = authProvider;
     this.providerId = providerId;
     this.avatar = avatar;
-    this.isEmailVerified = isEmailVerified;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }

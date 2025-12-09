@@ -59,37 +59,6 @@ const updateProfileValidation = [
     .withMessage('Avatar must be a valid URL'),
 ];
 
-// Validation rules for email verification
-const verifyEmailValidation = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-
-  body('code')
-    .trim()
-    .notEmpty()
-    .withMessage('Verification code is required')
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be 6 digits')
-    .isNumeric()
-    .withMessage('Verification code must contain only numbers'),
-];
-
-// Validation rules for resend verification
-const resendVerificationValidation = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-];
-
 // Middleware to check validation results
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -108,12 +77,42 @@ const validate = (req, res, next) => {
   next();
 };
 
+// Validation rules for forgot password
+const forgotPasswordValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+
+  body('newPassword')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long'),
+];
+
+// Validation rules for change password
+const changePasswordValidation = [
+  body('currentPassword')
+    .notEmpty()
+    .withMessage('Current password is required'),
+
+  body('newPassword')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long'),
+];
+
 module.exports = {
   signupValidation,
   loginValidation,
   updateProfileValidation,
-  verifyEmailValidation,
-  resendVerificationValidation,
+  forgotPasswordValidation,
+  changePasswordValidation,
   validate,
 };
 

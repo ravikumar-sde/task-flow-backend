@@ -6,8 +6,8 @@ const {
   signupValidation,
   loginValidation,
   updateProfileValidation,
-  verifyEmailValidation,
-  resendVerificationValidation,
+  forgotPasswordValidation,
+  changePasswordValidation,
   validate,
 } = require('../middlewares/validation.middleware');
 
@@ -47,30 +47,6 @@ router.post(
 );
 
 /**
- * @route   POST /api/v1/auth/verify-email
- * @desc    Verify email with verification code
- * @access  Public
- */
-router.post(
-  '/verify-email',
-  verifyEmailValidation,
-  validate,
-  authController.verifyEmail.bind(authController)
-);
-
-/**
- * @route   POST /api/v1/auth/resend-verification
- * @desc    Resend verification code to email
- * @access  Public
- */
-router.post(
-  '/resend-verification',
-  resendVerificationValidation,
-  validate,
-  authController.resendVerification.bind(authController)
-);
-
-/**
  * @route   POST /api/v1/auth/refresh
  * @desc    Refresh access token using refresh token
  * @access  Public
@@ -102,6 +78,31 @@ router.put(
   updateProfileValidation,
   validate,
   authController.updateProfile.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/forgot-password
+ * @desc    Reset password without email verification (simple implementation)
+ * @access  Public
+ */
+router.post(
+  '/forgot-password',
+  forgotPasswordValidation,
+  validate,
+  authController.forgotPassword.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/change-password
+ * @desc    Change password for authenticated user
+ * @access  Private
+ */
+router.post(
+  '/change-password',
+  authenticate,
+  changePasswordValidation,
+  validate,
+  authController.changePassword.bind(authController)
 );
 
 // ============================================

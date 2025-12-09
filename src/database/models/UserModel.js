@@ -34,18 +34,6 @@ const userSchema = new mongoose.Schema(
     avatar: {
       type: String,
     },
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    emailVerificationCode: {
-      type: String,
-      select: false,
-    },
-    emailVerificationExpiry: {
-      type: Date,
-      select: false,
-    },
     refreshTokens: [{
       token: String,
       createdAt: {
@@ -89,7 +77,6 @@ userSchema.methods.toJSON = function () {
     email: user.email,
     authProvider: user.authProvider,
     avatar: user.avatar,
-    isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
