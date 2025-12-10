@@ -1,4 +1,4 @@
-# Trello Backend - Clean Architecture
+# Task Flow Backend - Clean Architecture
 
 A Node.js backend application built with Express.js and MongoDB, following Clean Architecture principles.
 
