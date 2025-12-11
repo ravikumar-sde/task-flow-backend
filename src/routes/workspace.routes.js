@@ -52,8 +52,20 @@ const updateMemberRoleValidation = [
     .withMessage('Role must be one of: admin, member, viewer'),
 ];
 
+const joinWithCodeValidation = [
+  body('inviteCode')
+    .trim()
+    .notEmpty()
+    .withMessage('Invite code is required')
+    .isLength({ min: 12, max: 12 })
+    .withMessage('Invite code must be exactly 12 characters')
+    .isAlphanumeric()
+    .withMessage('Invite code must contain only letters and numbers'),
+];
+
 router.post('/', authenticate, createWorkspaceValidation, validate, workspaceController.createWorkspace);
 router.get('/', authenticate, workspaceController.getUserWorkspaces);
+router.post('/join-with-code', authenticate, joinWithCodeValidation, validate, workspaceController.joinWorkspaceWithCode);
 router.post('/join/:inviteCode', authenticate, workspaceController.joinWorkspace);
 router.get('/:id/board/:boardId', authenticate, boardController.getBoardDashboard);
 router.get('/:id/members', authenticate, workspaceController.getWorkspaceMembers);

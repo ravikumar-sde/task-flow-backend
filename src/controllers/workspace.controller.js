@@ -147,6 +147,26 @@ class WorkspaceController {
     }
   }
 
+  async joinWorkspaceWithCode(req, res) {
+    try {
+      const { inviteCode } = req.body;
+      const userId = req.userId;
+
+      const result = await workspaceUseCase.joinWorkspaceViaInvite(inviteCode, userId);
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Successfully joined workspace using invite code',
+        data: result,
+      });
+    } catch (error) {
+      res.status(400).json({
+        status: 'error',
+        message: error.message,
+      });
+    }
+  }
+
   async getWorkspaceMembers(req, res) {
     try {
       const { id } = req.params;

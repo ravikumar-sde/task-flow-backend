@@ -557,12 +557,13 @@
 									"value": "WORKSPACE_ID_HERE"
 								}
 							]
-						}
+						},
+						"description": "Generate an invite link for the workspace. Returns a 12-character invite code that can be shared via link or manually entered. Only admins can generate invite links."
 					},
 					"response": []
 				},
 				{
-					"name": "Join Workspace via Invite",
+					"name": "Join Workspace via Invite Link",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -581,7 +582,35 @@
 									"value": "INVITE_CODE_HERE"
 								}
 							]
-						}
+						},
+						"description": "Join a workspace by clicking on an invite link. The invite code is extracted from the URL."
+					},
+					"response": []
+				},
+				{
+					"name": "Join Workspace with Manual Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"inviteCode\": \"abc123XYZ789\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/workspaces/join-with-code",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "workspaces", "join-with-code"]
+						},
+						"description": "Join a workspace by manually entering the 12-character invite code. This is useful when users want to type the code instead of clicking a link."
 					},
 					"response": []
 				},
