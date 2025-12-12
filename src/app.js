@@ -39,6 +39,7 @@ app.use('/api/v1/boards', require('./routes/board.routes'));
 app.use('/api/v1/stages', require('./routes/stage.routes'));
 app.use('/api/v1/cards', require('./routes/card.routes'));
 app.use('/api/v1/comments', require('./routes/comment.routes'));
+app.use('/api/v1/ai', require('./routes/ai.routes'));
 
 // 404 handler
 app.use((req, res) => {
