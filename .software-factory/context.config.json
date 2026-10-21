@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "files": [
+    ".software-factory/context/project-overview.md",
+    ".software-factory/context/repository-facts.json",
+    ".software-factory/context/source-index.json"
+  ]
+}

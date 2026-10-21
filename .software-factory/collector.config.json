@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "sourceFiles": ["package.json"],
+  "documentFiles": [],
+  "maxSourceBytes": 1000000
+}
