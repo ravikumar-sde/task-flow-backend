@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "collectorVersion": 1,
+  "sourceRevision": "3b03569c9874b02e2e52d7bfba35edb1566e945d",
+  "sourceFingerprint": "6eaaf9535c0247b58f202f8273df27af2be6d6d3b809e115f25aee64e9e8bf30",
+  "coverage": "Explicit selected files only; no full-project semantic analysis.",
+  "limitations": [
+    "No API, schema, or import parsing in this version.",
+    "Business meaning comes from the human overview and selected documents.",
+    "Unselected files are not inspected. Basic credential screening is not exhaustive."
+  ],
+  "packages": [
+    {
+      "path": "package.json",
+      "name": "trellobackend",
+      "dependencies": {
+        "dependencies": {
+          "@sendgrid/mail": "^8.1.6",
+          "bcryptjs": "^3.0.3",
+          "cors": "^2.8.5",
+          "dotenv": "^17.2.3",
+          "express": "^5.2.1",
+          "express-validator": "^7.3.1",
+          "jsonwebtoken": "^9.0.2",
+          "mongoose": "^9.0.0",
+          "nodemailer": "^7.0.11",
+          "openai": "^6.10.0",
+          "passport": "^0.7.0",
+          "passport-github2": "^0.1.12",
+          "passport-google-oauth20": "^2.0.0",
+          "passport-local": "^1.0.0"
+        },
+        "devDependencies": {
+          "nodemon": "^3.1.11"
+        },
+        "peerDependencies": {},
+        "optionalDependencies": {}
+      },
+      "scriptNames": [
+        "dev",
+        "format",
+        "format:check",
+        "lint",
+        "lint:fix",
+        "start",
+        "test",
+        "test:coverage",
+        "test:integration",
+        "test:watch"
+      ]
+    }
+  ],
+  "documents": []
+}

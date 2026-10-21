@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "collectorVersion": 1,
+  "sourceRevision": "3b03569c9874b02e2e52d7bfba35edb1566e945d",
+  "sourceFingerprint": "6eaaf9535c0247b58f202f8273df27af2be6d6d3b809e115f25aee64e9e8bf30",
+  "sourceFiles": [
+    {
+      "path": "package.json",
+      "bytes": 1528,
+      "sha256": "e07ae06753a66edf57d5fc876c63760efac10666792f8bf7cd866a8c2d087814"
+    }
+  ]
+}

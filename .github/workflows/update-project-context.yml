@@ -1,0 +1,138 @@
+name: Update project context
+
+on:
+  # Start manually until the collector and configuration are installed.
+  workflow_dispatch:
+
+  # Uncomment after the first successful manual run.
+  # push:
+  #   branches:
+  #     - main
+  #   paths-ignore:
+  #     - '.software-factory/context/repository-facts.json'
+  #     - '.software-factory/context/source-index.json'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-project-context-main
+  cancel-in-progress: false
+
+jobs:
+  update-context:
+    # Only trusted code on the target branch receives write permissions.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the source revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Check setup files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in \
+            scripts/collect-project-context.mjs \
+            .software-factory/collector.config.json \
+            .software-factory/context.config.json \
+            .software-factory/context/project-overview.md
+          do
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing required setup file: $file"
+              exit 1
+            fi
+          done
+
+      - name: Collect repository facts without AI
+        run: node scripts/collect-project-context.mjs generate
+
+      - name: Validate context
+        run: node scripts/collect-project-context.mjs validate
+
+      - name: Reject unexpected file changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+
+          const allowed = new Set([
+            '.software-factory/context/repository-facts.json',
+            '.software-factory/context/source-index.json',
+          ]);
+
+          const changed = [
+            ...execFileSync('git', [
+              'diff', '--name-only', '-z', 'HEAD',
+            ]).toString().split('\0'),
+            ...execFileSync('git', [
+              'ls-files', '--others', '--exclude-standard', '-z',
+            ]).toString().split('\0'),
+          ].filter(Boolean);
+
+          if (changed.some(path => !allowed.has(path))) {
+            console.error('Collector changed files outside its allowed outputs.');
+            process.exit(1);
+          }
+          NODE
+
+      - name: Check that the target branch has not moved
+        id: freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          latest=$(gh api \
+            "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+            --jq '.object.sha')
+
+          if [ "$latest" = "$SOURCE_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Target branch moved. Run again on the latest revision."
+          fi
+
+      - name: Create or update the context PR
+        if: steps.freshness.outputs.current == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          base: main
+          branch: automation/update-project-context
+          add-paths: |
+            .software-factory/context/repository-facts.json
+            .software-factory/context/source-index.json
+          commit-message: "docs: update generated project context"
+          title: "docs: update generated project context"
+          body: |
+            Automated repository-context update. No AI was used.
+
+            Source revision: ${{ github.sha }}
+
+            Please review:
+            - Generated facts and source coverage.
+            - Absence of secrets or sensitive information.
+            - Whether newer source changes require regeneration.
+
+            The developer-maintained project overview is not modified.
+            This PR must be reviewed and merged by a maintainer.
