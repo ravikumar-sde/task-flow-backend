@@ -1,17 +1,9 @@
 require('dotenv').config();
+const { readRecoveryConfig } = require('./recovery');
 
-// Parse CORS origin - supports single origin, multiple origins (comma-separated), or wildcard
 const parseCorsOrigin = (origin) => {
-  if (!origin || origin === '*') {
-    return '*';
-  }
-
-  // If multiple origins are provided (comma-separated), return as array
-  if (origin.includes(',')) {
-    return origin.split(',').map(o => o.trim());
-  }
-
-  // Single origin
+  if (!origin || origin === '*') return '*';
+  if (origin.includes(',')) return origin.split(',').map(o => o.trim());
   return origin;
 };
 
@@ -21,5 +13,5 @@ module.exports = {
   corsOrigin: parseCorsOrigin(process.env.CORS_ORIGIN),
   jwtSecret: process.env.JWT_SECRET,
   jwtExpire: process.env.JWT_EXPIRE || '7d',
+  recovery: readRecoveryConfig(),
 };
-
