@@ -18,7 +18,7 @@ The originating IP is Express `req.ip`. The application keeps Express's default 
 
 Each successful issuance atomically replaces the account's active SHA-256 token hash and expiry. Tokens contain 32 cryptographically random bytes. No TTL index is added to users. Profile serialization excludes recovery fields. Concurrent requests may send an already superseded link; only the last persisted hash remains active. Delivery failure removes only that request's hash and cannot remove a concurrent replacement.
 
-This story implements requesting a reset email. A token-redemption endpoint, single-use consumption, the frontend reset page, and session invalidation after successful redemption are separate work; no existing endpoint is changed to accept reset tokens here.
+Reset redemption is available at `POST /api/v1/auth/reset-password` with `token` and `newPassword`. Successful redemption atomically replaces the password, consumes the token and revokes all existing sessions. See `docs/session-revocation.md` for the completion contract. The frontend reset page remains separate work.
 
 ## Verification
 

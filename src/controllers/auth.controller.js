@@ -23,10 +23,7 @@ class AuthController {
       if (!req.user) {
         return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent('Authentication failed')}`);
       }
-      const token = authUseCase.generateToken(req.user._id);
-      const refreshToken = authUseCase.generateRefreshToken(req.user._id);
-      req.user.refreshTokens.push({ token: refreshToken });
-      await req.user.save();
+      const { token, refreshToken } = await authUseCase.issueSession(req.user);
       const redirectUrl = `${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}&refreshToken=${encodeURIComponent(refreshToken)}`;
       res.redirect(redirectUrl);
     } catch (error) {
@@ -69,6 +66,14 @@ class AuthController {
   async forgotPassword(req, res, next) {
     try {
       const result = await authUseCase.forgotPassword({ email: req.body.email, ip: req.ip });
+      res.status(200).json({ status: 'success', message: result.message });
+    } catch (error) { next(error); }
+  }
+
+  async resetPassword(req, res, next) {
+    try {
+      const { token, newPassword } = req.body || {};
+      const result = await authUseCase.resetPassword({ token, newPassword });
       res.status(200).json({ status: 'success', message: result.message });
     } catch (error) { next(error); }
   }

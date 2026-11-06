@@ -2,16 +2,28 @@ const jwt = require('jsonwebtoken');
 const User = require('../entities/User');
 const UserModel = require('../database/models/UserModel');
 const config = require('../config/server');
+const { unauthorized, sessionVersion, versionFilter } = require('../utils/session.util');
 const { PasswordRecoveryUseCase } = require('./password-recovery.usecase');
 const recovery = new PasswordRecoveryUseCase();
 
 class AuthUseCase {
-  generateToken(userId) {
-    return jwt.sign({ id: userId }, config.jwtSecret, { expiresIn: config.jwtExpire });
+  generateToken(userId, version = 0) {
+    return jwt.sign({ id: userId, type: 'access', sessionVersion: sessionVersion(version) }, config.jwtSecret, { expiresIn: config.jwtExpire });
   }
 
-  generateRefreshToken(userId) {
-    return jwt.sign({ id: userId, type: 'refresh' }, config.jwtSecret, { expiresIn: '30d' });
+  generateRefreshToken(userId, version = 0) {
+    return jwt.sign({ id: userId, type: 'refresh', sessionVersion: sessionVersion(version) }, config.jwtSecret, { expiresIn: '30d' });
+  }
+
+  async issueSession(user, credentials = {}) {
+    const version = sessionVersion(user.sessionVersion);
+    const token = this.generateToken(user._id, version);
+    const refreshToken = this.generateRefreshToken(user._id, version);
+    const result = await UserModel.updateOne({
+      _id: user._id, ...credentials, ...versionFilter(version),
+    }, { $push: { refreshTokens: { token: refreshToken } } });
+    if (result.matchedCount !== 1) throw unauthorized();
+    return { token, refreshToken };
   }
 
   verifyToken(token) {
@@ -29,10 +41,7 @@ class AuthUseCase {
     const existingUser = await UserModel.findOne({ email });
     if (existingUser) throw new Error('User with this email already exists');
     const savedUser = await UserModel.create({ name, email, password, authProvider: 'local' });
-    const token = this.generateToken(savedUser._id);
-    const refreshToken = this.generateRefreshToken(savedUser._id);
-    savedUser.refreshTokens.push({ token: refreshToken });
-    await savedUser.save();
+    const { token, refreshToken } = await this.issueSession(savedUser);
     return {
       user: savedUser.toJSON(), token, refreshToken,
       message: 'Signup successful! You are now logged in.',
@@ -47,10 +56,7 @@ class AuthUseCase {
       throw new Error(`This account uses ${user.authProvider} authentication. Please login with ${user.authProvider}.`);
     }
     if (!await user.comparePassword(password)) throw new Error('Invalid email or password');
-    const token = this.generateToken(user._id);
-    const refreshToken = this.generateRefreshToken(user._id);
-    user.refreshTokens.push({ token: refreshToken });
-    await user.save();
+    const { token, refreshToken } = await this.issueSession(user, { password: user.password, authProvider: 'local' });
     return { user: user.toJSON(), token, refreshToken };
   }
 
@@ -67,10 +73,7 @@ class AuthUseCase {
         user = await UserModel.create({ name, email, providerId, authProvider, avatar });
       }
     }
-    const token = this.generateToken(user._id);
-    const refreshToken = this.generateRefreshToken(user._id);
-    user.refreshTokens.push({ token: refreshToken });
-    await user.save();
+    const { token, refreshToken } = await this.issueSession(user);
     return { user: user.toJSON(), token, refreshToken };
   }
 
@@ -80,18 +83,25 @@ class AuthUseCase {
       if (decoded.type !== 'refresh') throw new Error('Invalid refresh token');
       const user = await UserModel.findById(decoded.id);
       if (!user) throw new Error('User not found');
-      if (!user.refreshTokens.some(rt => rt.token === refreshToken)) throw new Error('Invalid refresh token');
-      return { token: this.generateToken(user._id) };
+      const version = sessionVersion(decoded.sessionVersion);
+      if (sessionVersion(user.sessionVersion) !== version) throw unauthorized();
+      // Fence against both revocation and logout after the account read. Never
+      // adopt a newer account version for credentials from an older session.
+      const result = await UserModel.updateOne({
+        _id: user._id, ...versionFilter(version), 'refreshTokens.token': refreshToken,
+      }, { $set: { sessionVersion: version } });
+      if (result.matchedCount !== 1) throw unauthorized();
+      return { token: this.generateToken(user._id, version) };
     } catch {
-      throw new Error('Invalid or expired refresh token');
+      throw unauthorized('Invalid or expired refresh token');
     }
   }
 
   async logout(userId, refreshToken) {
-    const user = await UserModel.findById(userId);
-    if (!user) throw new Error('User not found');
-    user.refreshTokens = user.refreshTokens.filter(rt => rt.token !== refreshToken);
-    await user.save();
+    const result = await UserModel.updateOne({ _id: userId }, {
+      $pull: { refreshTokens: { token: refreshToken } },
+    });
+    if (result.matchedCount !== 1) throw new Error('User not found');
     return { message: 'Logged out successfully' };
   }
 
@@ -114,6 +124,10 @@ class AuthUseCase {
 
   async forgotPassword({ email, ip }) {
     return recovery.request({ email, ip });
+  }
+
+  async resetPassword({ token, newPassword }) {
+    return recovery.complete({ token, newPassword });
   }
 
   async changePassword({ userId, currentPassword, newPassword }) {

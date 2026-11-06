@@ -1,4 +1,5 @@
 const { randomBytes, createHash } = require('node:crypto');
+const bcrypt = require('bcryptjs');
 const { normalizeEmail } = require('validator');
 const UserModel = require('../database/models/UserModel');
 const RecoveryLimitModel = require('../database/models/RecoveryLimitModel');
@@ -13,6 +14,32 @@ class PasswordRecoveryUseCase {
     mail = resetEmail, settings = config.recovery,
     clock = () => new Date(), log = console } = {}) {
     Object.assign(this, { users, limits, mail, settings, clock, log });
+  }
+
+  async complete({ token, newPassword }) {
+    const invalid = () => Object.assign(new Error('Invalid or expired reset token, or invalid password'), { status: 400 });
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token) ||
+        typeof newPassword !== 'string' || newPassword.length < 6) {
+      throw invalid();
+    }
+    let result;
+    try {
+      // Query updates bypass the model's password save hook.
+      const password = await bcrypt.hash(newPassword, 10);
+      result = await this.users.updateOne({
+        authProvider: 'local',
+        passwordResetTokenHash: hashToken(token),
+        passwordResetExpiresAt: { $gt: this.clock() },
+      }, {
+        $set: { password, refreshTokens: [] },
+        $unset: { passwordResetTokenHash: '', passwordResetExpiresAt: '' },
+        $inc: { sessionVersion: 1 },
+      });
+    } catch {
+      throw Object.assign(new Error('Unable to complete password reset'), { status: 500 });
+    }
+    if (result.matchedCount !== 1) throw invalid();
+    return { message: 'Password has been reset successfully' };
   }
 
   async request({ email, ip }) {
