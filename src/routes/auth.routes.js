@@ -17,6 +17,7 @@ router.put('/profile', authenticate, updateProfileValidation, validate, authCont
 
 // Public email-only recovery request. Passwords are never changed here.
 router.post('/forgot-password', forgotPasswordValidation, validate, authController.forgotPassword.bind(authController));
+router.post('/reset-password', authController.resetPassword.bind(authController));
 router.post('/change-password', authenticate, changePasswordValidation, validate, authController.changePassword.bind(authController));
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));

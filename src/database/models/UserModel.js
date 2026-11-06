@@ -22,6 +22,8 @@ const userSchema = new mongoose.Schema(
       select: false,
       minlength: [6, 'Password must be at least 6 characters long'],
     },
+    // Internal state; public serializers below intentionally omit this field.
+    sessionVersion: { type: Number, default: 0, min: 0 },
     passwordResetTokenHash: { type: String, select: false },
     passwordResetExpiresAt: { type: Date, select: false },
     authProvider: {

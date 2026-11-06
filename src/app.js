@@ -36,7 +36,7 @@ app.use((err, req, res, next) => {
   // payloads. Neither error objects nor stacks are safe to log for recovery.
   // Match Express's default case-insensitive, optional-trailing-slash routing,
   // including parser failures that occur before the auth router is reached.
-  const recoveryRequest = /^\/api\/v1\/auth\/forgot-password\/?$/i.test(req.path);
+  const recoveryRequest = /^\/api\/v1\/auth\/(forgot-password|reset-password)\/?$/i.test(req.path);
   if (recoveryRequest) {
     console.error('Password reset request error');
     return res.status(err.status || 500).json({
